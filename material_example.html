@@ -4,38 +4,79 @@
 
   <script src='util.js'></script>
 
-  <script id='vs' type='x-shader'>
-    attribute vec2 pos;
+  <script src='webgl-obj-loader.js'></script>
+
+  <script type="text/javascript" src="gl-matrix.js"></script>
+
+  <script type="text/plain" id="my_plane.obj">
+      
+    v -1 0 -1
+    v -1 0  1
+    v  1 0  1
+    v  1 0 -1
+
+    vt 0 0
+    vt 0 1
+    vt 1 1
+    vt 1 0
+
+    vn 0 1 0
+    vn 0 1 0
+    vn 0 1 0
+    vn 0 1 0
+
+    f 1/1/1 2/2/2 3/3/3
+    f 3/3/3 4/4/4 1/1/1
+
+  </script>
+
+  <script id='vs' type='x-shader/x-vertex'>
+    attribute vec3 vpos;
+    attribute vec3 vnor;
+    attribute vec2 vtex;
+
+    uniform mat4 mvproj;
+    uniform mat3 nmatrix;
+
+    varying vec2 vUv;
+    varying vec3 vNorm;
+
     void main()
     {
-      gl_Position = vec4(pos, 0, 1);
+      gl_Position = mvproj * vec4(vpos, 1.0);
+      vNorm       = nmatrix * vnor;
+      vUv         = vtex;
     }
   </script>
 
-  <script id='fs' type='x-shader'>
+  <script id='fs' type='x-shader/x-fragment'>
+
     precision mediump float;
+
     uniform vec2 viewport;
+    //uniform sampler2D meshTex;
+
+    varying vec2 vUv;
+    varying vec3 vNorm;
+
+    // todo : lighting
+
     void main()
     {
-      vec4 clr = gl_FragCoord;
+      // vec4 clr = gl_FragCoord;
 
-      gl_FragColor = vec4((clr.x / viewport.x), (clr.y / viewport.y), 0.1, 1);
+      // clr.x /= viewport.x;
+      // clr.y /= viewport.y;
+      // clr.z = sqrt(max(0.707 - clr.x * clr.x - clr.y * clr.y, 0.0));
+
+      //gl_FragColor = texture2D(meshTex, vUv) * vec4(0.7, 0.7, 0.7, 1.0);
+      gl_FragColor = vec4(vUv.x, vUv.y, 0.7, 1.0);
     }
   </script>
 
   <script>
 
     var gl = InitWebGL('gl-cvs');
-
-    var vertices = [-1, -1, 1, -1, 0, 1];
-
-    var vertexPosBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPosBuffer);
-
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
-    vertexPosBuffer.itemSize = 2;
-    vertexPosBuffer.numItems = 3;
 
     var vs = document.getElementById('vs').textContent;
     var fs = document.getElementById('fs').textContent;
@@ -44,25 +85,89 @@
 
     gl.useProgram(program);
 
-    program.vertexPosAttrib = gl.getAttribLocation(program, 'pos');
+    // -----------------
+    // set up attributes
+    // -----------------
+
+    program.vertexPositionAttribute = gl.getAttribLocation(program, "vpos");
+    gl.enableVertexAttribArray(program.vertexPositionAttribute);
+
+    program.vertexNormalAttribute = gl.getAttribLocation(program, "vnor");
+    gl.enableVertexAttribArray(program.vertexNormalAttribute);
+
+    program.textureCoordAttribute = gl.getAttribLocation(program, "vtex");
+    gl.enableVertexAttribArray(program.textureCoordAttribute);
+
+    var objStr = document.getElementById('my_plane.obj').innerHTML;
+    var mesh = new OBJ.Mesh(objStr);
+    OBJ.initMeshBuffers(gl, mesh);
+
+    console.log("vertices: " + mesh.vertexBuffer.numItems);
+    console.log("textures: " + mesh.textureBuffer.numItems);
+    console.log("normal:   " + mesh.normalBuffer.numItems);
+    console.log("indices:  " + mesh.indexBuffer.numItems);
+    
 
     gl.uniform2f(gl.getUniformLocation(program, 'viewport'), gl.viewportWidth, gl.viewportHeight);
 
+    // mvproj, nmatrix, meshTex
+    var m_mview = mat4.create();
+    var m_persp = mat4.create();
+
+    var m_mvp   = mat4.create();
+    var m_norm  = mat3.create();
+
+    program.m_mvp   = gl.getUniformLocation(program, "mvproj");
+    program.m_norm  = gl.getUniformLocation(program, "nmatrix");
+
+    mat4.identity(m_persp);
+    mat4.identity(m_mview);
+
+    mat4.perspective(m_persp, 1.05, gl.viewportWidth / gl.viewportHeight, 0.01, 100.0);
+
+    mat4.lookAt(m_mview, [0, 5, 2], [0, 0, 0], [0, 1, 0]);
+
+    mat4.multiply(m_mvp, m_persp, m_mview);
+    mat3.normalFromMat4(m_norm, m_mvp);
+
+    gl.uniformMatrix4fv(program.m_mvp,  false, m_mvp);
+    gl.uniformMatrix3fv(program.m_norm, false, m_norm);
+
+    // -----------------
+    // render
+    // -----------------
+
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.enableVertexAttribArray(program.vertexPosAttrib);
+    // gl.enableVertexAttribArray(program.vertexPosAttrib);
 
-    gl.vertexAttribPointer(
-      program.vertexPosAttrib, vertexPosBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    // gl.vertexAttribPointer(
+    //   program.vertexPosAttrib, vertexPosBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-    setInterval(DrawScene, 15);
+    setInterval(DrawScene, 100);
 
     function DrawScene()
     {
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      //gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      // now to render the mesh
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vertexBuffer);
+      gl.vertexAttribPointer(program.vertexPositionAttribute, mesh.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.textureBuffer);
+      gl.vertexAttribPointer(program.textureCoordAttribute, mesh.textureBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.normalBuffer);
+      gl.vertexAttribPointer(program.vertexNormalAttribute, mesh.normalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indexBuffer);
+      gl.drawElements(gl.TRIANGLES, mesh.indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+
+      //console.log ("trying to draw " + mesh.indexBuffer.numItems + " verts");
     }
 
   </script>
