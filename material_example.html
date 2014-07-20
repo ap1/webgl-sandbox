@@ -1,0 +1,73 @@
+<html>
+
+  <canvas id='gl-cvs' width='600' height='600' style='border: solid 1px black'></canvas>
+
+  <script src='util.js'></script>
+
+  <script id='vs' type='x-shader'>
+    attribute vec2 pos;
+    void main()
+    {
+      gl_Position = vec4(pos, 0, 1);
+    }
+  </script>
+
+  <script id='fs' type='x-shader'>
+    precision mediump float;
+    uniform vec2 viewport;
+    void main()
+    {
+      vec4 clr = gl_FragCoord;
+
+      gl_FragColor = vec4((clr.x / viewport.x), (clr.y / viewport.y), 0.1, 1);
+    }
+  </script>
+
+  <script>
+
+    var gl = InitWebGL('gl-cvs');
+
+    var vertices = [-1, -1, 1, -1, 0, 1];
+
+    var vertexPosBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPosBuffer);
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+    vertexPosBuffer.itemSize = 2;
+    vertexPosBuffer.numItems = 3;
+
+    var vs = document.getElementById('vs').textContent;
+    var fs = document.getElementById('fs').textContent;
+
+    var program = CreateProgram(gl, vs, fs);
+
+    gl.useProgram(program);
+
+    program.vertexPosAttrib = gl.getAttribLocation(program, 'pos');
+
+    gl.uniform2f(gl.getUniformLocation(program, 'viewport'), gl.viewportWidth, gl.viewportHeight);
+
+    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.enableVertexAttribArray(program.vertexPosAttrib);
+
+    gl.vertexAttribPointer(
+      program.vertexPosAttrib, vertexPosBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+    setInterval(DrawScene, 15);
+
+    function DrawScene()
+    {
+      gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+
+  </script>
+
+<body >
+
+</body>
+</html>
