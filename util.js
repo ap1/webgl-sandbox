@@ -51,3 +51,18 @@ function CreateProgram(gl, vs, fs)
   return program;
 }
 
+
+
+/**
+ * Provides requestAnimationFrame in a cross browser way.
+ */
+window.requestAnimFrame = (function() {
+  return window.requestAnimationFrame ||
+         window.webkitRequestAnimationFrame ||
+         window.mozRequestAnimationFrame ||
+         window.oRequestAnimationFrame ||
+         window.msRequestAnimationFrame ||
+         function(/* function FrameRequestCallback */ callback, /* DOMElement Element */ element) {
+           return window.setTimeout(callback, 10);
+         };
+})();

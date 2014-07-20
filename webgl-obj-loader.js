@@ -215,10 +215,10 @@
     this.vertexNormals = unpacked.norms;
     this.textures = unpacked.textures;
     this.indices = unpacked.indices;
-    console.log("_vertices: " + this.vertices);
-    console.log("_textures: " + this.textures);
-    console.log("_normal:   " + this.vertexNormals);
-    console.log("_indices:  " + this.indices);
+    // console.log("_vertices: " + this.vertices);
+    // console.log("_textures: " + this.textures);
+    // console.log("_normal:   " + this.vertexNormals);
+    // console.log("_indices:  " + this.indices);
   }
 
   var Ajax = function(){
